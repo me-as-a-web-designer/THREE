@@ -1,0 +1,157 @@
+<head>
+		<title>three.js webgl - shader [Monjori]</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0px;
+  overflow: hidden;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+}
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> 
+      <hr/>
+      <a href="https://glslsandbox.com/e#77869.0">glslsandbox shader</a>
+       <hr/>
+      <a href="https://stackoverflow.com/questions/35401179/how-to-use-fragment-shader-from-glslsandbox-com">how to add sandbox shaders to three.js scene?</a>
+      <hr/>
+		</div>
+
+		<script id="vs" type="not-js">
+			void main()	{
+				gl_Position = vec4( position, 1.0 );
+			}
+			</script>
+			<script id="fs" type="not-js">
+        #ifdef GL_ES
+precision highp float;
+#endif
+
+#extension GL_OES_standard_derivatives : enable
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+
+
+mat2 rot(float a)
+{
+  float s = sin(a);
+  float c = cos(a);
+  return mat2(c, s, -s, c);
+}
+
+float uppermask(vec2 position,float tt)
+{
+	float sum = 0.;
+	
+	float toff1 = position.x*.8+fract(tt*0.5)*6.21;
+	float toff2 = position.y*.5+fract(tt*0.15)*2.28;;
+	for(float i = 0.; i <= 1.; i += 0.05)
+	{
+		sum += sin(toff1+cos(toff2+position.x/(1.5+i))+(position.y*(.25+i)));
+		position*=rot(0.3);
+		//position *= 1.02;
+	}
+	
+	float v = 1.0-step(sum,0.0);
+	return v;
+
+}
+
+void main( void )
+{
+
+    vec2 position = (gl_FragCoord.xy - 0.5 * resolution.xy) / resolution.y;
+	
+	position.y += sin(fract(time*0.1)*6.28)*0.1;
+	position.x += cos(fract(time*0.1)*6.28)*0.1;
+	
+	
+	float v1 = uppermask(position*32.0,time);
+	
+	float v = v1;
+	vec3 col = vec3(v);
+	
+	gl_FragColor = vec4(col,1.0);
+
+}
+
+			</script>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r74/three.min.js"></script>
+
+		<script type="module">
+
+var $ = document.querySelector.bind(document);
+
+var camera = new THREE.Camera();
+camera.position.z = 1;
+
+var scene = new THREE.Scene();
+
+var geometry = new THREE.PlaneBufferGeometry(2, 2);
+
+var uniforms = {
+  time: { type: "f", value: 1.0 },
+  resolution: { type: "v2", value: new THREE.Vector2() },
+  mouse: { type: "v2", value: new THREE.Vector2() },
+};
+
+var material = new THREE.ShaderMaterial({
+  uniforms: uniforms,
+  vertexShader: $('#vs').text,
+  fragmentShader: $('#fs').text,
+});
+
+var mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+
+var renderer = new THREE.WebGLRenderer();
+document.body.appendChild(renderer.domElement);
+renderer.domElement.addEventListener('mousemove', recordMousePosition);
+
+render(0);
+
+function recordMousePosition(e) {
+  // normalize the mouse position across the canvas
+  // so in the shader the values go from -1 to +1
+  var canvas = renderer.domElement;
+  var rect = canvas.getBoundingClientRect();
+
+  uniforms.mouse.value.x = (e.clientX - rect.left) / canvas.clientWidth  *  2 - 1;
+  uniforms.mouse.value.y = (e.clientY - rect.top ) / canvas.clientHeight * -2 + 1;      
+}
+
+function resize() {
+  var canvas = renderer.domElement;
+  var dpr    = window.devicePixelRatio;  // make 1 or less if too slow
+  var width  = canvas.clientWidth  * dpr;
+  var height = canvas.clientHeight * dpr;
+  if (width != canvas.width || height != canvas.height) {
+    renderer.setSize( width, height, false );
+    uniforms.resolution.value.x = renderer.domElement.width;
+    uniforms.resolution.value.y = renderer.domElement.height;
+  }
+}
+
+function render(time) {
+  resize();
+  uniforms.time.value = time * 0.001;
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+		</script>
+
+	</body>
+
